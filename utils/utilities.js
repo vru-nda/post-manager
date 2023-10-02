@@ -9,9 +9,12 @@
 const paginate = async (model, query, page = 1, limit = 5) => {
   // Calculate the number of documents to skip
   const skip = (page - 1) * limit;
-  const totalCount = await model.countDocuments();
 
-  const results = await query
+  const results = await query.exec();
+  let totalCount = results.length;
+
+  const paginatedResults = await query
+    .clone()
     .skip(skip)
     .limit(parseInt(limit))
     .populate('tags', 'name')
@@ -22,7 +25,7 @@ const paginate = async (model, query, page = 1, limit = 5) => {
   const totalResults = totalCount;
 
   return {
-    results,
+    results: paginatedResults,
     currentPage,
     totalPages,
     totalResults,
