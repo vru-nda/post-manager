@@ -1,25 +1,31 @@
 /**
- * Paginate results of a MongoDB query
+ * Paginate results of a MongoDB query with additional metadata
  * @param {Model} model - The Mongoose model to query
+ * @param {Query} query - The Mongoose query to execute
  * @param {number} page - The current page number
  * @param {number} limit - The number of results per page
- * @returns {Promise<Object>} - Paginated results with metadata
+ * @returns {Promise<Object>} - An object containing paginated results and metadata
  */
 const paginate = async (model, query, page = 1, limit = 5) => {
+  // Calculate the number of documents to skip
   const skip = (page - 1) * limit;
-
   const totalCount = await model.countDocuments();
+
   const results = await query
     .skip(skip)
     .limit(parseInt(limit))
     .populate('tags', 'name')
     .exec();
 
+  const currentPage = page;
+  const totalPages = Math.ceil(totalCount / limit);
+  const totalResults = totalCount;
+
   return {
     results,
-    currentPage: page,
-    totalPages: Math.ceil(totalCount / limit),
-    totalResults: totalCount,
+    currentPage,
+    totalPages,
+    totalResults,
   };
 };
 

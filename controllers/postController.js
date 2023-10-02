@@ -1,9 +1,12 @@
 import asyncHandler from 'express-async-handler';
+import AWS from 'aws-sdk';
 
 import Post from '../models/Post.js';
 import Tag from '../models/Tag.js';
 
 import {paginate} from '../utils/utilities.js';
+
+const s3 = new AWS.S3();
 
 // @desc    Fetch all Posts with Sorting, Pagination, Keyword Search, and Tag Filtering
 // @route   GET /api/posts
@@ -89,9 +92,34 @@ const filterByKeyword = asyncHandler(async (req, res) => {
 // @route   POST /api/posts
 // @access  Public
 const createPost = asyncHandler(async (req, res) => {
-  const {title, description, image, tags} = req.body;
+  const {title, description, tags} = req.body;
+  let imageUrl = null;
 
-  const post = await Post.create({title, description, image, tags});
+  // Check for image
+  if (req.file) {
+    const imageFile = req.file;
+    const imageName = `${Date.now()}.${imageFile.originalname
+      .split('.')
+      .pop()}`;
+
+    // Configuration parameters for the S3 upload
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: imageName,
+      Body: imageFile.buffer,
+      ACL: 'public-read',
+    };
+
+    // Upload the image to S3 bucket
+    const uploadResult = await s3.upload(params).promise();
+    if (!uploadResult) {
+      res.status(400);
+      throw new Error('Error uploading the image');
+    }
+    imageUrl = uploadResult.Location;
+  }
+
+  const post = await Post.create({title, description, image: imageUrl, tags});
 
   if (post) {
     res.status(201).json({message: 'Post created successfully', post});
